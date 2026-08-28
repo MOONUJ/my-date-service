@@ -1,0 +1,24 @@
+{
+  "name": "my-date-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm build && wrangler dev",
+    "dev:ui": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "worker:types": "wrangler types",
+    "worker:check": "wrangler deploy --dry-run"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "vitest": "latest",
+    "wrangler": "latest"
+  },
+  "packageManager": "pnpm@11.19.0"
+}
