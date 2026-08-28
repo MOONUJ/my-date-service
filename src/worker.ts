@@ -1,5 +1,6 @@
 import type { ApiError } from "./domain";
-import { searchMockPlaces, validateSearchRequest } from "./search";
+import { mockPlaceProvider } from "./providers/mock-place-provider";
+import { searchPlaces, validateSearchRequest } from "./search";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
 
@@ -37,7 +38,7 @@ async function handleSearch(request: Request): Promise<Response> {
     return jsonError("INVALID_SEARCH", "검색어와 이동 수단을 확인해 주세요.", 400);
   }
 
-  return Response.json(searchMockPlaces(searchRequest), { headers: JSON_HEADERS });
+  return Response.json(await searchPlaces(searchRequest, mockPlaceProvider), { headers: JSON_HEADERS });
 }
 
 function jsonError(code: string, message: string, status: number): Response {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { searchMockPlaces, validateSearchRequest } from "./search";
+import { mockPlaceProvider } from "./providers/mock-place-provider";
+import { searchPlaces, validateSearchRequest } from "./search";
 
 describe("validateSearchRequest", () => {
   it("normalizes a valid request", () => {
@@ -17,10 +18,11 @@ describe("validateSearchRequest", () => {
   });
 });
 
-describe("searchMockPlaces", () => {
-  it("returns three ranked recommendations and transport-specific tips", () => {
-    const result = searchMockPlaces(
+describe("searchPlaces", () => {
+  it("returns three ranked recommendations and transport-specific tips", async () => {
+    const result = await searchPlaces(
       { query: "성수 마제소바", taste: "조용한 일식", transport: "transit" },
+      mockPlaceProvider,
       new Date("2026-08-28T00:00:00.000Z"),
     );
 

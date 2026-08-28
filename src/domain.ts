@@ -21,7 +21,7 @@ export interface PlaceRecommendation {
 export interface SearchResponse {
   query: string;
   generatedAt: string;
-  source: "mock";
+  source: string;
   recommendations: PlaceRecommendation[];
   places: PlaceRecommendation[];
 }

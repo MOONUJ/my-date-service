@@ -21,4 +21,8 @@ pnpm dev:ui
 pnpm check
 ```
 
+`pnpm check`에는 지도 공급자 공통 contract suite가 포함됩니다. 새 지도 공급자 어댑터는 `runPlaceProviderContract`를 호출하는 contract test를 추가해 정규화된 장소 ID, 좌표, 결과 제한, 오류 및 요청 중단 규칙을 동일하게 검증해야 합니다.
+
+GitHub Actions는 `main` push와 모든 pull request에서 동일한 검사와 Cloudflare Worker 배포 dry-run을 실행합니다.
+
 현재 첫 번째 수직 슬라이스는 mock 장소 검색 API를 사용합니다. 실제 지도 공급자, OpenAI, 인증과 D1은 API 경계를 유지한 채 후속 단계에서 연결합니다.
