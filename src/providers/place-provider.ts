@@ -27,7 +27,15 @@ export interface PlaceProvider {
 
 export class PlaceProviderError extends Error {
   constructor(
-    readonly code: "INVALID_QUERY" | "INVALID_LIMIT" | "ABORTED" | "PROVIDER_FAILURE",
+    readonly code:
+      | "INVALID_QUERY"
+      | "INVALID_LIMIT"
+      | "ABORTED"
+      | "TIMEOUT"
+      | "AUTHENTICATION_FAILED"
+      | "RATE_LIMITED"
+      | "INVALID_RESPONSE"
+      | "PROVIDER_FAILURE",
     message: string,
   ) {
     super(message);

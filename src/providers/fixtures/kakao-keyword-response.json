@@ -1,0 +1,42 @@
+{
+  "meta": {
+    "is_end": true,
+    "pageable_count": 2,
+    "same_name": {
+      "keyword": "성수 파스타",
+      "region": [],
+      "selected_region": ""
+    },
+    "total_count": 2
+  },
+  "documents": [
+    {
+      "address_name": "서울 성동구 성수동2가 277-24",
+      "category_group_code": "FD6",
+      "category_group_name": "음식점",
+      "category_name": "음식점 > 양식 > 이탈리안",
+      "distance": "",
+      "id": "fixture-kakao-1",
+      "phone": "02-000-0000",
+      "place_name": "성수 테스트 키친",
+      "place_url": "https://place.map.kakao.com/fixture-kakao-1",
+      "road_address_name": "서울 성동구 연무장길 1",
+      "x": "127.056123",
+      "y": "37.544321"
+    },
+    {
+      "address_name": "서울 성동구 성수동1가 685-700",
+      "category_group_code": "CE7",
+      "category_group_name": "카페",
+      "category_name": "음식점 > 카페 > 디저트카페",
+      "distance": "",
+      "id": "fixture-kakao-2",
+      "phone": "",
+      "place_name": "서울숲 테스트 카페",
+      "place_url": "https://place.map.kakao.com/fixture-kakao-2",
+      "road_address_name": "서울 성동구 서울숲길 2",
+      "x": "127.043456",
+      "y": "37.547654"
+    }
+  ]
+}

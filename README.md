@@ -15,6 +15,15 @@ pnpm dev
 pnpm dev:ui
 ```
 
+기본 공급자는 `wrangler.jsonc`에 명시된 `mock`입니다. 실제 카카오 장소 검색을 로컬에서 사용하려면 `.dev.vars.example`을 참고해 gitignore된 `.dev.vars`를 만들고 다음 값을 설정합니다.
+
+```dotenv
+PLACE_PROVIDER=kakao
+KAKAO_REST_API_KEY=카카오_디벨로퍼스_REST_API_키
+```
+
+REST API 키는 Worker에서만 읽으며 클라이언트 번들에 포함하지 않습니다. 프로덕션에서는 `PLACE_PROVIDER`를 `kakao`로 설정하고 `pnpm wrangler secret put KAKAO_REST_API_KEY`로 secret을 별도 등록해야 합니다. 이 저장소의 테스트와 CI는 고정 fixture만 사용하므로 카카오 API를 호출하지 않습니다. 카카오 Local API의 쿼터와 이용 조건은 배포 전에 [공식 쿼터 문서](https://developers.kakao.com/docs/latest/ko/getting-started/quota)와 [키워드 장소 검색 문서](https://developers.kakao.com/docs/latest/ko/local/dev-guide#search-by-keyword)에서 다시 확인합니다.
+
 ## 검증
 
 ```bash
@@ -25,4 +34,4 @@ pnpm check
 
 GitHub Actions는 `main` push와 모든 pull request에서 동일한 검사와 Cloudflare Worker 배포 dry-run을 실행합니다.
 
-현재 첫 번째 수직 슬라이스는 mock 장소 검색 API를 사용합니다. 실제 지도 공급자, OpenAI, 인증과 D1은 API 경계를 유지한 채 후속 단계에서 연결합니다.
+현재 첫 번째 수직 슬라이스는 기본적으로 mock 장소 검색 API를 사용하며, 설정을 통해 카카오 Local 키워드 검색으로 전환할 수 있습니다. 지도 렌더링, OpenAI, 인증과 D1은 API 경계를 유지한 채 후속 단계에서 연결합니다.
