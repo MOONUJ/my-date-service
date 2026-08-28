@@ -1,10 +1,10 @@
 ---
 id: TICKET-0001
 title: 카카오 장소 검색 공급자 연결
-status: proposed
+status: in-progress
 created_at: 2026-08-28
-approved_at: null
-started_at: null
+approved_at: "2026-08-28T15:41:50+09:00"
+started_at: "2026-08-28T15:41:50+09:00"
 completed_at: null
 ---
 
@@ -96,3 +96,4 @@ completed_at: null
 ## 이력
 
 - 2026-08-28: proposed — 티켓 생성
+- 2026-08-28: in-progress — 사용자 승인 후 구현 시작
