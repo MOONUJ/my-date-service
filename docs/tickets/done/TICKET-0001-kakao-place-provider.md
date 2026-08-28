@@ -1,11 +1,11 @@
 ---
 id: TICKET-0001
 title: 카카오 장소 검색 공급자 연결
-status: in-progress
+status: done
 created_at: 2026-08-28
 approved_at: "2026-08-28T15:41:50+09:00"
 started_at: "2026-08-28T15:41:50+09:00"
-completed_at: null
+completed_at: "2026-08-28T15:47:30+09:00"
 ---
 
 ## 목적과 사용자 가치
@@ -51,12 +51,12 @@ completed_at: null
 
 ## 완료 조건
 
-- [ ] 카카오 어댑터가 공유 `PlaceProvider` contract suite를 통과한다.
-- [ ] 대표 fixture의 장소 ID, 이름, 카테고리, 주소와 좌표가 정확히 정규화된다.
-- [ ] timeout, 취소, 인증 오류, rate limit, 잘못된 JSON을 구분 가능한 내부 오류로 변환한다.
-- [ ] API 키가 없는 로컬 환경에서는 명시적으로 mock 모드를 사용할 수 있다.
-- [ ] `pnpm check`와 `pnpm worker:check`가 통과한다.
-- [ ] 구현 커밋이 push되고 GitHub Actions CI가 성공한다.
+- [x] 카카오 어댑터가 공유 `PlaceProvider` contract suite를 통과한다.
+- [x] 대표 fixture의 장소 ID, 이름, 카테고리, 주소와 좌표가 정확히 정규화된다.
+- [x] timeout, 취소, 인증 오류, rate limit, 잘못된 JSON을 구분 가능한 내부 오류로 변환한다.
+- [x] API 키가 없는 로컬 환경에서는 명시적으로 mock 모드를 사용할 수 있다.
+- [x] `pnpm check`와 `pnpm worker:check`가 통과한다.
+- [x] 구현 커밋이 push되고 GitHub Actions CI가 성공한다.
 
 ## 검증 계획
 
@@ -87,13 +87,14 @@ completed_at: null
 
 ## 완료 증거
 
-- 구현 커밋: 미완료
-- 브랜치: 미완료
-- CI: 미완료
-- 검증 결과: 미완료
-- 잔여 위험: 카카오 약관·쿼터와 API 키 발급 여부 확인 필요
+- 구현 커밋: `68f6676455f22d4fd2f6294b0f46997709da84c9`
+- 브랜치: `main`
+- CI: 성공 — https://github.com/MOONUJ/my-date-service/actions/runs/33149096321
+- 검증 결과: `pnpm check` 성공(23 tests), `pnpm worker:check` 성공, `git diff --check` 성공
+- 잔여 위험: 실제 카카오 키 발급·실환경 호출·Cloudflare secret 등록·프로덕션 배포는 이 티켓 범위에서 수행하지 않음. 배포 직전 카카오 쿼터와 약관을 다시 확인해야 함.
 
 ## 이력
 
 - 2026-08-28: proposed — 티켓 생성
 - 2026-08-28: in-progress — 사용자 승인 후 구현 시작
+- 2026-08-28: done — 구현·로컬 검증·원격 CI 성공 확인
