@@ -1,15 +1,21 @@
 ---
 name: development-loop
-description: Plan, implement, verify, review, commit, and push a coherent change in this repository. Use for multi-step feature work, refactoring, or bug fixes; skip for read-only questions and trivial text-only edits.
+description: Implement, verify, review, commit, and push an approved repository ticket. Use for multi-step feature work, refactoring, or bug fixes only after the ticket gate is satisfied; skip for ticket proposals, read-only questions, and trivial text-only edits.
 ---
 
 # Development Loop
 
-Deliver a verified repository change in small, reviewable increments. Preserve the user's requested scope and the rules in the nearest `AGENTS.md`.
+Deliver a verified approved-ticket change in small, reviewable increments. Preserve the user's requested scope and the rules in the nearest `AGENTS.md`.
+
+## 0. Enforce the ticket gate
+
+Before implementation, locate exactly one matching ticket under `docs/tickets/in-progress/`. It must record user approval and describe the requested scope and completion criteria. If it remains proposed, is ambiguous, or does not cover the requested mutation, stop implementation and use the `ticket-workflow` skill to prepare or update the ticket for approval.
+
+Do not treat implementation authorization for one ticket as approval for another. Keep the ticket open through implementation, verification, commit, push, and CI. Close it only through the ticket workflow after all required evidence exists.
 
 ## 1. Frame the outcome
 
-Extract the goal, relevant context, constraints, and observable definition of done. Read the applicable `.planing` documents and inspect the current code before choosing an implementation. Ask only when an undiscoverable choice would materially change the product, cost, security boundary, or public behavior.
+Use the in-progress ticket as the scope boundary. Read its goal, context, constraints, exclusions, completion criteria, verification plan, applicable `.planing` documents, and current code before choosing an implementation. Ask only when an undiscoverable choice would materially change the product, cost, security boundary, public behavior, or approved ticket scope.
 
 For multi-step work, keep a short live plan with one active step at a time. Update it when evidence changes the approach; do not preserve a stale plan merely for consistency.
 
@@ -47,4 +53,4 @@ Use a connected GitHub capability for requested PR, issue, or check operations o
 
 ## 7. Hand off evidence
 
-Report the delivered behavior first, then the key files, verification commands and outcomes, commit hash/branch, push result, and any remaining decision or risk. Do not describe work as complete while a required validation or requested remote action remains unresolved.
+Report the delivered behavior first, then the ticket ID, key files, verification commands and outcomes, commit hash/branch, push and CI result, and any remaining decision or risk. After the implementation evidence is durable, use `ticket-workflow` to move the ticket to `done/` or `blocked/`. Do not describe work as complete while a required validation, requested remote action, CI result, or ticket transition remains unresolved.
