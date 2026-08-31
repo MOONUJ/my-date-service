@@ -1,4 +1,5 @@
 import type { ApiError, SearchRequest, SearchResponse, Transport } from "./domain";
+import { createKakaoMapController, createMapPresenter, loadKakaoMapsSdk, type MapViewState } from "./map/kakao-map";
 import "./styles.css";
 
 const DEFAULT_TASTE = "조용하고 대화하기 좋은 분위기, 일식이나 파스타 선호";
@@ -52,12 +53,11 @@ app.innerHTML = `
 
     <section class="map-section" aria-labelledby="map-title">
       <div class="section-heading"><div><p class="eyebrow">NEIGHBORHOOD</p><h2 id="map-title">한눈에 비교하기</h2></div></div>
-      <div class="map-placeholder" role="img" aria-label="검색한 장소의 지도 영역 준비 중">
-        <div class="map-grid" aria-hidden="true"></div>
-        <span class="map-pin pin-one" aria-hidden="true">1</span>
-        <span class="map-pin pin-two" aria-hidden="true">2</span>
-        <span class="map-pin pin-three" aria-hidden="true">3</span>
-        <p><strong>지도 연결 준비 중</strong><br />장소 목록은 지도 없이도 모두 확인할 수 있어요.</p>
+      <div class="map-shell">
+        <div id="map-canvas" class="map-canvas" aria-hidden="true"></div>
+        <div id="map-fallback" class="map-fallback" role="status">
+          <p><strong>검색 결과를 기다리고 있어요</strong><br />검색하면 장소 위치를 지도에 함께 표시해 드려요.</p>
+        </div>
       </div>
       <div id="place-list" class="place-list"></div>
     </section>
@@ -86,6 +86,13 @@ const profileButton = document.querySelector<HTMLButtonElement>(".profile-button
 const tasteInput = getElement<HTMLTextAreaElement>("taste");
 const tasteSummary = document.querySelector<HTMLElement>(".taste-summary p");
 const submitButton = form.querySelector<HTMLButtonElement>("button[type='submit']");
+const mapCanvas = getElement<HTMLDivElement>("map-canvas");
+const mapFallback = getElement<HTMLDivElement>("map-fallback");
+const mapPresenter = createMapPresenter(
+  () => loadKakaoMapsSdk(import.meta.env.VITE_KAKAO_MAP_JAVASCRIPT_KEY ?? ""),
+  (sdk) => createKakaoMapController(mapCanvas, sdk),
+  renderMapState,
+);
 
 profileButton?.addEventListener("click", () => {
   profileButton.setAttribute("aria-expanded", "true");
@@ -139,7 +146,7 @@ function setLoading(loading: boolean): void {
 
 function renderResults(data: SearchResponse): void {
   status.hidden = true;
-  resultMeta.textContent = `${data.recommendations.length}곳 · 데모 데이터`;
+  resultMeta.textContent = `${data.recommendations.length}곳 · ${data.source === "kakao" ? "카카오 검색 결과" : "데모 데이터"}`;
   recommendations.innerHTML = data.recommendations.map((place) => `
     <article class="recommendation-card ${place.rank === 1 ? "featured" : ""}">
       <div class="rank">0${place.rank}</div>
@@ -156,6 +163,19 @@ function renderResults(data: SearchResponse): void {
       <span class="category">${escapeHtml(place.category)}</span>
     </article>
   `).join("");
+  mapPresenter.update(data.places);
+}
+
+function renderMapState(state: MapViewState): void {
+  const messages: Record<Exclude<MapViewState, "ready">, string> = {
+    empty: "<strong>표시할 장소가 없어요</strong><br />검색 조건을 바꿔 다시 찾아보세요.",
+    loading: "<strong>지도를 불러오는 중이에요</strong><br />장소 목록은 먼저 확인할 수 있어요.",
+    unavailable: "<strong>지도를 표시할 수 없어요</strong><br />아래 장소 목록은 계속 이용할 수 있어요.",
+  };
+  const ready = state === "ready";
+  mapCanvas.hidden = state === "empty" || state === "unavailable";
+  mapFallback.hidden = ready;
+  if (!ready) mapFallback.innerHTML = `<p>${messages[state]}</p>`;
 }
 
 function getElement<T extends HTMLElement>(id: string): T {
