@@ -1,11 +1,11 @@
 ---
 id: TICKET-0003
 title: Cloudflare 임시 프리뷰 배포
-status: in-progress
+status: done
 created_at: 2026-08-31
 approved_at: "2026-08-31T13:01:39+09:00"
 started_at: "2026-08-31T13:01:39+09:00"
-completed_at: null
+completed_at: "2026-08-31T13:05:36+09:00"
 ---
 
 ## 목적과 사용자 가치
@@ -55,12 +55,12 @@ completed_at: null
 
 ## 완료 조건
 
-- [ ] 검증된 `main`이 임시 `workers.dev` URL에 배포된다.
-- [ ] 공개 URL의 홈 화면과 `/api/health`가 정상 응답한다.
-- [ ] mock 검색 결과와 지도 fallback이 공개 URL에서 동작한다.
-- [ ] 모바일과 데스크톱에서 핵심 흐름에 가로 스크롤이나 치명적 콘솔 오류가 없다.
-- [ ] 배포 URL과 claim 기한을 사용자에게 전달하고 claim URL은 저장소에 남기지 않는다.
-- [ ] 구현 전 CI와 로컬 검증이 성공하고 배포 후 작업 트리가 깨끗하다.
+- [x] 검증된 `main`이 임시 `workers.dev` URL에 배포된다.
+- [x] 공개 URL의 홈 화면과 `/api/health`가 정상 응답한다.
+- [x] mock 검색 결과와 지도 fallback이 공개 URL에서 동작한다.
+- [x] 모바일과 데스크톱에서 핵심 흐름에 가로 스크롤이나 치명적 콘솔 오류가 없다.
+- [x] 배포 URL과 claim 기한을 사용자에게 전달하고 claim URL은 저장소에 남기지 않는다.
+- [x] 구현 전 CI와 로컬 검증이 성공하고 배포 후 작업 트리가 깨끗하다.
 
 ## 검증 계획
 
@@ -88,14 +88,15 @@ completed_at: null
 
 ## 완료 증거
 
-- 배포 대상 커밋: 미완료
-- 배포 URL: 미완료
-- 브랜치: 미완료
-- CI: 미완료
-- 검증 결과: 미완료
-- 잔여 위험: 미완료
+- 배포 대상 커밋: `590a3ab76c7d98c6a9b5674dfcde88066e20b357`
+- 배포 URL: https://my-date-service.raspy-tachometer.workers.dev
+- 브랜치: `main`
+- CI: 성공 — https://github.com/MOONUJ/my-date-service/actions/runs/33355715144
+- 검증 결과: `pnpm check` 성공(27 tests, typecheck, production build), `pnpm worker:check` 성공(Wrangler 4.126.0 dry-run), Worker 시작 시간 4ms, 공개 `/api/health`와 mock 검색 성공, 320px·1280px 브라우저에서 문서 가로 넘침·콘솔 오류 없음
+- 잔여 위험: 임시 프리뷰를 60분 안에 귀속하지 않으면 계정과 리소스가 삭제됨. 실제 카카오 키와 허용 도메인을 설정하지 않아 지도는 fallback으로 표시됨. claim URL은 저장소에 기록하지 않고 사용자에게만 전달함.
 
 ## 이력
 
 - 2026-08-31: proposed — 티켓 생성
 - 2026-08-31: in-progress — 사용자 승인 및 Cloudflare 약관 동의 후 배포 시작
+- 2026-08-31: done — 임시 배포·공개 API·반응형 브라우저 검증 완료
