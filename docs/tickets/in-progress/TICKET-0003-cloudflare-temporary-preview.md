@@ -1,10 +1,10 @@
 ---
 id: TICKET-0003
 title: Cloudflare 임시 프리뷰 배포
-status: proposed
+status: in-progress
 created_at: 2026-08-31
-approved_at: null
-started_at: null
+approved_at: "2026-08-31T13:01:39+09:00"
+started_at: "2026-08-31T13:01:39+09:00"
 completed_at: null
 ---
 
@@ -98,3 +98,4 @@ completed_at: null
 ## 이력
 
 - 2026-08-31: proposed — 티켓 생성
+- 2026-08-31: in-progress — 사용자 승인 및 Cloudflare 약관 동의 후 배포 시작
