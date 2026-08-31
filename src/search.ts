@@ -42,15 +42,31 @@ export function curatePlaces(
   providerPlaces: ProviderPlace[],
   now = new Date(),
 ): SearchResponse {
-  const places = providerPlaces.map((place, index) => ({
+  const tasteTokens = tokenize(request.taste);
+  const rankedPlaces = providerPlaces
+    .map((place, providerIndex) => {
+      const matchedEvidence = findMatchedEvidence(place, tasteTokens);
+      const transitTip = request.transport === "car" ? place.parkingTip : place.transitTip;
+
+      return {
+        providerIndex,
+        score: matchedEvidence.length * 10 + (transitTip === null ? 0 : 1),
+        place,
+        matchedEvidence,
+        transitTip,
+      };
+    })
+    .sort((left, right) => right.score - left.score || left.providerIndex - right.providerIndex);
+
+  const places = rankedPlaces.map(({ place, matchedEvidence, transitTip }, index) => ({
     id: place.providerPlaceId,
     rank: index + 1,
     name: place.name,
     category: place.category,
     address: place.address,
     coordinates: place.coordinates,
-    reason: buildReason(place.tags, request.taste),
-    transitTip: request.transport === "car" ? place.parkingTip : place.transitTip,
+    reason: buildReason(matchedEvidence, request.taste, request.transport, transitTip !== null),
+    transitTip,
     tags: [...place.tags],
   }));
 
@@ -63,7 +79,42 @@ export function curatePlaces(
   };
 }
 
-function buildReason(tags: readonly string[], taste: string): string {
-  const preference = taste.length > 0 ? "등록한 취향" : "데이트 분위기";
-  return `${preference}과 잘 맞는 ${tags.slice(0, 2).join(", ")} 장소예요.`;
+function normalize(value: string): string {
+  return value.normalize("NFKC").toLocaleLowerCase("ko-KR").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+
+function tokenize(value: string): string[] {
+  return [...new Set(normalize(value).split(/\s+/u).filter((token) => token.length >= 2))];
+}
+
+function findMatchedEvidence(place: ProviderPlace, tasteTokens: readonly string[]): string[] {
+  if (tasteTokens.length === 0) return [];
+
+  const evidence = [place.name, place.category, ...place.tags];
+  return [...new Set(evidence.filter((value) => {
+    const normalizedValue = normalize(value);
+    return normalizedValue.length > 0 && tasteTokens.some((token) => normalizedValue.includes(token));
+  }))];
+}
+
+function buildReason(
+  matchedEvidence: readonly string[],
+  taste: string,
+  transport: Transport,
+  hasTransportTip: boolean,
+): string {
+  const transportEvidence = hasTransportTip
+    ? `${transport === "car" ? "주차" : "대중교통"} 안내를 확인할 수 있어요.`
+    : null;
+
+  if (matchedEvidence.length > 0) {
+    const preferenceEvidence = matchedEvidence.slice(0, 2).map((value) => `“${value}”`).join(", ");
+    return `${preferenceEvidence} 정보가 취향과 일치해요.${transportEvidence ? ` ${transportEvidence}` : ""}`;
+  }
+
+  if (taste.length > 0) {
+    return `취향과 직접 일치하는 장소 정보는 없어 검색 결과를 기준으로 추천했어요.${transportEvidence ? ` ${transportEvidence}` : ""}`;
+  }
+
+  return `검색 결과 순서${transportEvidence ? `와 ${transport === "car" ? "주차" : "대중교통"} 안내 여부` : ""}를 기준으로 추천했어요.`;
 }
