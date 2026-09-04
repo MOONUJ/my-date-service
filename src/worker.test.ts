@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildVerifiedReason } from "./ai/validation";
+import { createUser } from "./auth/auth";
 import worker, { type AppEnv, selectPlaceProvider } from "./worker";
 
 describe("place provider selection", () => {
@@ -47,6 +48,31 @@ describe("place provider selection", () => {
       env,
     );
     expect(oversized.status).toBe(413);
+  });
+
+  it("requires same-origin, an authenticated session, the exact phrase, and current password to delete an account", async () => {
+    const db = new AccountD1();
+    await createUser(db as unknown as D1Database, "delete-me@example.test", "correct horse battery");
+    const env = { DB: db as unknown as D1Database, PLACE_PROVIDER: "mock" } satisfies AppEnv;
+    const request = (body: unknown, origin = "https://example.test") => new Request("https://example.test/api/account", {
+      method: "DELETE",
+      headers: { cookie: "date_mate_session=fixture", origin, "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    expect((await worker.fetch(request({ password: "correct horse battery", confirmation: "계정 삭제" }, "https://attacker.test"), env)).status).toBe(403);
+    expect((await worker.fetch(request({ password: "correct horse battery", confirmation: "계정삭제" }), env)).status).toBe(400);
+    expect((await worker.fetch(request({ password: "wrong password value", confirmation: "계정 삭제" }), env)).status).toBe(401);
+    expect(db.deleted).toBe(false);
+
+    const response = await worker.fetch(request({ password: "correct horse battery", confirmation: "계정 삭제" }), env);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toContain("HttpOnly; Secure; SameSite=Lax; Max-Age=0");
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(db.deleted).toBe(true);
+
+    const repeated = await worker.fetch(request({ password: "correct horse battery", confirmation: "계정 삭제" }), env);
+    expect(repeated.status).toBe(401);
   });
 
   it("returns fake AI curation and reuses its user-scoped cache", async () => {
@@ -114,5 +140,48 @@ class SearchD1 {
     if (sql.startsWith("INSERT INTO ai_usage_daily")) this.dailyCalls += 1;
     if (sql.startsWith("INSERT INTO ai_usage_monthly")) this.monthlyCalls += 1;
     return { success: true, meta: { changes: 1 } } as D1Result;
+  }
+}
+
+class AccountD1 {
+  private user: Record<string, unknown> | null = null;
+  deleted = false;
+
+  prepare(sql: string) {
+    let args: unknown[] = [];
+    const statement = {
+      bind: (...values: unknown[]) => { args = values; return statement; },
+      first: async <T>() => this.first(sql, args) as T | null,
+      run: async () => this.run(sql, args),
+    };
+    return statement;
+  }
+
+  private first(sql: string, args: unknown[]): unknown {
+    if (!this.user || this.deleted) return null;
+    if (sql.includes("sessions JOIN users")) {
+      return { id: this.user.id, email: this.user.email, expires_at: "2099-01-01T00:00:00.000Z" };
+    }
+    if (sql.startsWith("DELETE FROM users")) {
+      if (args[0] !== this.user.id) return null;
+      this.deleted = true;
+      return { id: this.user.id };
+    }
+    if (sql.includes("FROM users WHERE id")) return this.user;
+    return null;
+  }
+
+  private async run(sql: string, args: unknown[]) {
+    if (sql.startsWith("INSERT INTO users")) {
+      this.user = {
+        id: args[0],
+        email: args[1],
+        password_hash: args[2],
+        password_salt: args[3],
+        password_iterations: args[4],
+      };
+      return { success: true, meta: { changes: 1 } } as D1Result;
+    }
+    return { success: true, meta: { changes: 0 } } as D1Result;
   }
 }

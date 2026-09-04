@@ -23,7 +23,7 @@ export async function readCurationCache(db: D1Database, userId: string, cacheKey
 export async function writeCurationCache(db: D1Database, userId: string, cacheKey: string, value: AiCuration, now: Date): Promise<void> {
   await db.prepare("INSERT INTO ai_curation_cache (user_id, cache_key, result_json, created_at, expires_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_id, cache_key) DO UPDATE SET result_json = excluded.result_json, created_at = excluded.created_at, expires_at = excluded.expires_at")
     .bind(userId, cacheKey, JSON.stringify(value), now.toISOString(), new Date(now.getTime() + CACHE_TTL_MS).toISOString()).run();
-  await db.prepare("DELETE FROM ai_curation_cache WHERE expires_at <= ?").bind(now.toISOString()).run();
+  await db.prepare("DELETE FROM ai_curation_cache WHERE rowid IN (SELECT rowid FROM ai_curation_cache WHERE expires_at <= ? ORDER BY expires_at LIMIT 20)").bind(now.toISOString()).run();
 }
 
 export async function reserveUsage(db: D1Database, userId: string, now: Date): Promise<boolean> {

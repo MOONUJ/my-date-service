@@ -5,11 +5,14 @@ import {
   clearSessionCookie,
   createSession,
   createUser,
+  deleteAccount,
   getSessionUser,
   hasSameOrigin,
   revokeSession,
   validateCredentials,
+  validateAccountDeletion,
   verifyCredentials,
+  verifyUserPassword,
 } from "./auth/auth";
 import { getPreference, savePreference, validateTaste } from "./preferences/preferences";
 import { createKakaoPlaceProvider } from "./providers/kakao-place-provider";
@@ -40,6 +43,7 @@ export default {
       if (url.pathname === "/api/auth/signup" && request.method === "POST") return handleSignup(request, env);
       if (url.pathname === "/api/auth/login" && request.method === "POST") return handleLogin(request, env);
       if (url.pathname === "/api/auth/logout" && request.method === "POST") return handleLogout(request, env);
+      if (url.pathname === "/api/account" && request.method === "DELETE") return handleDeleteAccount(request, env);
       if (url.pathname === "/api/preferences" && request.method === "GET") return handleGetPreference(request, env);
       if (url.pathname === "/api/preferences" && request.method === "PUT") return handleSavePreference(request, env);
       if (url.pathname === "/api/search" && request.method === "POST") return handleSearch(request, env);
@@ -97,6 +101,29 @@ async function handleLogout(request: Request, env: AppEnv): Promise<Response> {
   if (unsafeRequest) return unsafeRequest;
   await revokeSession(env.DB, request);
   return Response.json({ ok: true }, { headers: { ...JSON_HEADERS, "set-cookie": clearSessionCookie() } });
+}
+
+async function handleDeleteAccount(request: Request, env: AppEnv): Promise<Response> {
+  const unsafeRequest = rejectCrossOrigin(request);
+  if (unsafeRequest) return unsafeRequest;
+  const user = await getSessionUser(env.DB, request);
+  if (!user) return unauthorized();
+  const parsed = await readJson(request, AUTH_BODY_LIMIT);
+  if (!parsed.ok) return parsed.response;
+  const deletion = validateAccountDeletion(parsed.value);
+  if (!deletion.ok) {
+    return deletion.code === "INVALID_CONFIRMATION"
+      ? jsonError(deletion.code, "확인란에 ‘계정 삭제’를 정확히 입력해 주세요.", 400)
+      : jsonError(deletion.code, "현재 비밀번호를 확인해 주세요.", 400);
+  }
+  if (!(await verifyUserPassword(env.DB, user.id, deletion.password))) {
+    return jsonError("INVALID_ACCOUNT_CREDENTIALS", "현재 비밀번호를 확인해 주세요.", 401);
+  }
+  if (!(await deleteAccount(env.DB, user.id))) return unauthorized();
+  return Response.json(
+    { ok: true },
+    { headers: { ...JSON_HEADERS, "set-cookie": clearSessionCookie() } },
+  );
 }
 
 async function handleGetPreference(request: Request, env: AppEnv): Promise<Response> {

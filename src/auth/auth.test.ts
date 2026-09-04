@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clearSessionCookie, hasSameOrigin, validateCredentials } from "./auth";
+import { clearSessionCookie, hasSameOrigin, validateAccountDeletion, validateCredentials } from "./auth";
 
 describe("auth input and request boundaries", () => {
   it("normalizes a valid email and requires a long password", () => {
@@ -26,5 +26,20 @@ describe("auth input and request boundaries", () => {
 
   it("clears the opaque session cookie with secure attributes", () => {
     expect(clearSessionCookie()).toContain("HttpOnly; Secure; SameSite=Lax; Max-Age=0");
+  });
+
+  it("requires the current password shape and exact Korean deletion phrase", () => {
+    expect(validateAccountDeletion({ password: "correct horse battery", confirmation: "계정 삭제" })).toEqual({
+      ok: true,
+      password: "correct horse battery",
+    });
+    expect(validateAccountDeletion({ password: "correct horse battery", confirmation: "계정삭제" })).toEqual({
+      ok: false,
+      code: "INVALID_CONFIRMATION",
+    });
+    expect(validateAccountDeletion({ password: "short", confirmation: "계정 삭제" })).toEqual({
+      ok: false,
+      code: "INVALID_PASSWORD",
+    });
   });
 });

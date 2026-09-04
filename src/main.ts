@@ -74,6 +74,20 @@ app.innerHTML = `
       <p class="field-help">취향은 계정에 안전하게 저장되고 추천 순위에 사용됩니다.</p>
       <div id="taste-status" class="form-status" role="status" aria-live="polite"></div>
       <button id="save-taste" class="primary-button dialog-save" type="submit">취향 저장하기</button>
+      <div class="danger-zone"><p><strong>계정과 저장 데이터 삭제</strong><br />삭제한 계정은 복구할 수 없습니다.</p><button id="open-delete-account" class="danger-link" type="button">계정 삭제</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="delete-account-dialog" class="taste-dialog delete-account-dialog" aria-labelledby="delete-account-title">
+    <form id="delete-account-form">
+      <div class="dialog-heading"><div><p class="eyebrow">DELETE ACCOUNT</p><h2 id="delete-account-title">계정 삭제</h2></div><button id="close-delete-account" type="button" aria-label="계정 삭제 취소">×</button></div>
+      <p class="delete-warning">계정, 저장된 취향, 모든 로그인 세션과 사용자별 추천 캐시가 즉시 삭제되며 복구할 수 없습니다.</p>
+      <label class="field-label" for="delete-password">현재 비밀번호</label>
+      <input id="delete-password" name="password" type="password" autocomplete="current-password" minlength="12" maxlength="128" required />
+      <label class="field-label" for="delete-confirmation">확인을 위해 ‘계정 삭제’ 입력</label>
+      <input id="delete-confirmation" name="confirmation" type="text" autocomplete="off" required />
+      <div id="delete-account-status" class="form-status" role="status" aria-live="polite"></div>
+      <div class="delete-actions"><button id="cancel-delete-account" class="secondary-button" type="button">취소</button><button id="confirm-delete-account" class="danger-button" type="submit">영구 삭제</button></div>
     </form>
   </dialog>
 
@@ -101,6 +115,13 @@ const tasteForm = getElement<HTMLFormElement>("taste-form");
 const tasteInput = getElement<HTMLTextAreaElement>("taste");
 const tasteStatus = getElement<HTMLDivElement>("taste-status");
 const closeTasteButton = getElement<HTMLButtonElement>("close-taste");
+const openDeleteAccountButton = getElement<HTMLButtonElement>("open-delete-account");
+const deleteAccountDialog = getElement<HTMLDialogElement>("delete-account-dialog");
+const deleteAccountForm = getElement<HTMLFormElement>("delete-account-form");
+const deleteAccountStatus = getElement<HTMLDivElement>("delete-account-status");
+const closeDeleteAccountButton = getElement<HTMLButtonElement>("close-delete-account");
+const cancelDeleteAccountButton = getElement<HTMLButtonElement>("cancel-delete-account");
+const confirmDeleteAccountButton = getElement<HTMLButtonElement>("confirm-delete-account");
 const tasteSummary = document.querySelector<HTMLElement>(".taste-summary p");
 const submitButton = form.querySelector<HTMLButtonElement>("button[type='submit']");
 const mapCanvas = getElement<HTMLDivElement>("map-canvas");
@@ -119,6 +140,7 @@ logoutButton.addEventListener("click", async () => {
   logoutButton.disabled = true;
   try {
     await apiRequest<{ ok: boolean }>("/api/auth/logout", { method: "POST" });
+    resetServiceState();
     showAuth(false);
   } catch (error) {
     status.hidden = false;
@@ -137,6 +159,39 @@ profileButton?.addEventListener("click", () => {
 });
 closeTasteButton.addEventListener("click", () => dialog.close());
 dialog.addEventListener("close", () => profileButton?.setAttribute("aria-expanded", "false"));
+openDeleteAccountButton.addEventListener("click", () => {
+  dialog.close();
+  deleteAccountForm.reset();
+  deleteAccountStatus.textContent = "";
+  deleteAccountDialog.showModal();
+});
+const closeDeleteAccount = () => deleteAccountDialog.close();
+closeDeleteAccountButton.addEventListener("click", closeDeleteAccount);
+cancelDeleteAccountButton.addEventListener("click", closeDeleteAccount);
+deleteAccountDialog.addEventListener("close", () => profileButton?.focus());
+
+deleteAccountForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!deleteAccountForm.reportValidity()) return;
+  const data = new FormData(deleteAccountForm);
+  confirmDeleteAccountButton.disabled = true;
+  deleteAccountStatus.textContent = "계정과 저장 데이터를 삭제하고 있어요…";
+  try {
+    await apiRequest<{ ok: boolean }>("/api/account", {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password: data.get("password"), confirmation: data.get("confirmation") }),
+    });
+    deleteAccountDialog.close();
+    resetServiceState();
+    showAuth(false);
+    authStatus.textContent = "계정과 저장 데이터가 삭제됐습니다.";
+  } catch (error) {
+    deleteAccountStatus.textContent = messageFrom(error, "계정을 삭제하지 못했습니다.");
+  } finally {
+    confirmDeleteAccountButton.disabled = false;
+  }
+});
 
 tasteForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -249,6 +304,20 @@ function setPreference(preference: Preference): void {
   currentTaste = preference.taste;
   tasteInput.value = currentTaste || DEFAULT_TASTE;
   if (tasteSummary) tasteSummary.textContent = currentTaste || "아직 저장된 취향이 없어요.";
+}
+
+function resetServiceState(): void {
+  currentTaste = "";
+  accountEmail.textContent = "";
+  tasteInput.value = DEFAULT_TASTE;
+  if (tasteSummary) tasteSummary.textContent = "아직 저장된 취향이 없어요.";
+  recommendations.replaceChildren();
+  placeList.replaceChildren();
+  resultMeta.textContent = "검색 전이에요";
+  status.hidden = false;
+  status.className = "status-card";
+  status.textContent = "검색하면 취향에 맞는 세 곳을 먼저 골라드려요.";
+  mapPresenter.update([]);
 }
 
 async function apiRequest<T>(url: string, init?: RequestInit): Promise<T> {
