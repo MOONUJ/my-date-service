@@ -6,10 +6,11 @@
 
 ```bash
 pnpm install
+pnpm db:migrate:local
 pnpm dev
 ```
 
-`pnpm dev`는 정적 UI를 빌드한 뒤 Cloudflare Worker와 mock API를 함께 실행합니다. UI만 빠르게 수정할 때는 Worker를 별도로 실행한 상태에서 다음 명령을 사용할 수 있습니다.
+`pnpm db:migrate:local`은 로컬 전용 D1에 사용자·세션·취향 migration을 적용합니다. `pnpm dev`는 정적 UI를 빌드한 뒤 Cloudflare Worker와 mock API를 함께 실행합니다. UI만 빠르게 수정할 때는 Worker를 별도로 실행한 상태에서 다음 명령을 사용할 수 있습니다.
 
 ```bash
 pnpm dev:ui
@@ -18,9 +19,18 @@ pnpm dev:ui
 기본 공급자는 `wrangler.jsonc`에 명시된 `mock`입니다. 실제 카카오 장소 검색을 로컬에서 사용하려면 `.dev.vars.example`을 참고해 gitignore된 `.dev.vars`를 만들고 다음 값을 설정합니다.
 
 ```dotenv
+ENABLE_SIGNUP=true
 PLACE_PROVIDER=kakao
 KAKAO_REST_API_KEY=카카오_디벨로퍼스_REST_API_키
 ```
+
+## 인증과 취향 데이터
+
+회원가입은 비공개 개인용 운영을 위해 기본적으로 닫혀 있습니다. 첫 개인 계정을 만들 때만 gitignore된 `.dev.vars`에서 `ENABLE_SIGNUP=true`로 실행하고, 계정 생성 후에는 값을 제거하거나 `false`로 돌려 다시 시작하세요. 이 설정을 켠 채 공개 배포하지 마세요.
+
+비밀번호 원문은 저장하지 않고 Web Crypto PBKDF2 파생값과 salt만 D1에 저장합니다. 로그인 세션은 브라우저 JavaScript 저장소 대신 `HttpOnly`, `Secure`, `SameSite=Lax` 쿠키로 유지하며 D1에는 토큰 해시만 저장합니다. 이메일과 취향 문장은 서비스 기능에 필요한 최소 개인정보이며 외부 지도 공급자에는 취향 원문을 보내지 않습니다. 프로덕션 공개 전 계정 삭제와 데이터 보존 기간 정책을 별도 결정해야 합니다.
+
+현재 `wrangler.jsonc`의 D1 ID는 로컬 개발용 placeholder입니다. 실제 원격 D1 생성, migration 적용과 binding ID 등록은 별도 승인·배포 작업이며 이 저장소가 자동으로 수행하지 않습니다. Cloudflare D1 무료 플랜의 사용량과 저장 한도는 배포 직전 [공식 가격 문서](https://developers.cloudflare.com/d1/platform/pricing/)에서 다시 확인하세요.
 
 REST API 키는 Worker에서만 읽으며 클라이언트 번들에 포함하지 않습니다. 프로덕션에서는 `PLACE_PROVIDER`를 `kakao`로 설정하고 `pnpm wrangler secret put KAKAO_REST_API_KEY`로 secret을 별도 등록해야 합니다. 이 저장소의 테스트와 CI는 고정 fixture만 사용하므로 카카오 API를 호출하지 않습니다. 카카오 Local API의 쿼터와 이용 조건은 배포 전에 [공식 쿼터 문서](https://developers.kakao.com/docs/latest/ko/getting-started/quota)와 [키워드 장소 검색 문서](https://developers.kakao.com/docs/latest/ko/local/dev-guide#search-by-keyword)에서 다시 확인합니다.
 
@@ -44,4 +54,4 @@ pnpm check
 
 GitHub Actions는 `main` push와 모든 pull request에서 동일한 검사와 Cloudflare Worker 배포 dry-run을 실행합니다.
 
-현재 수직 슬라이스는 기본적으로 mock 장소 검색 API를 사용하며, 설정을 통해 카카오 Local 키워드 검색과 지도 렌더링으로 전환할 수 있습니다. OpenAI, 인증과 D1은 API 경계를 유지한 채 후속 단계에서 연결합니다.
+현재 수직 슬라이스는 D1에 저장한 계정별 취향과 기본 mock 장소 검색 API를 사용하며, 설정을 통해 카카오 Local 키워드 검색과 지도 렌더링으로 전환할 수 있습니다. OpenAI 기반 순위 보정은 API 경계를 유지한 채 후속 단계에서 연결합니다.

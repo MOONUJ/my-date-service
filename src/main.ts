@@ -1,81 +1,95 @@
-import type { ApiError, SearchRequest, SearchResponse, Transport } from "./domain";
+import type { ApiError, AuthResponse, Preference, SearchRequest, SearchResponse, SessionResponse, Transport } from "./domain";
 import { createKakaoMapController, createMapPresenter, loadKakaoMapsSdk, type MapViewState } from "./map/kakao-map";
 import "./styles.css";
 
 const DEFAULT_TASTE = "조용하고 대화하기 좋은 분위기, 일식이나 파스타 선호";
-
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App root is missing");
 
 app.innerHTML = `
-  <header class="topbar">
-    <a class="brand" href="#top" aria-label="Date Mate 홈">
-      <span class="brand-mark" aria-hidden="true">D</span>
-      <span>Date Mate</span>
-    </a>
-    <button class="profile-button" type="button" aria-label="취향 설정 열기" aria-expanded="false">
-      <span class="profile-dot" aria-hidden="true"></span>
-      나의 취향
-    </button>
-  </header>
-
-  <main id="top" class="page-shell">
-    <section class="intro" aria-labelledby="intro-title">
-      <p class="eyebrow">AI DATE CURATION</p>
-      <h1 id="intro-title">검색은 짧게,<br /><em>데이트는 오래.</em></h1>
-      <p class="intro-copy">내 취향과 오늘의 이동 방식을 반영해 실패 확률을 줄인 장소 세 곳을 먼저 보여드려요.</p>
-    </section>
-
-    <section class="search-panel" aria-label="데이트 장소 검색">
-      <form id="search-form">
-        <label class="field-label" for="query">어디에서 무엇을 찾나요?</label>
-        <div class="search-row">
-          <input id="query" name="query" type="search" value="성수동 마제소바" minlength="2" maxlength="80" required />
-          <button class="primary-button" type="submit">찾아보기</button>
-        </div>
-        <fieldset class="transport-fieldset">
-          <legend>오늘의 이동 방식</legend>
-          <label><input type="radio" name="transport" value="car" checked /><span>자가용 · 주차 중요</span></label>
-          <label><input type="radio" name="transport" value="transit" /><span>대중교통 · 도보 중요</span></label>
-        </fieldset>
+  <section id="auth-view" class="auth-view" aria-labelledby="auth-title">
+    <div class="auth-card">
+      <a class="brand auth-brand" href="#auth-title" aria-label="Date Mate 홈"><span class="brand-mark" aria-hidden="true">D</span><span>Date Mate</span></a>
+      <p class="eyebrow">PRIVATE DATE CURATION</p>
+      <h1 id="auth-title">나의 취향으로<br /><em>시작해요.</em></h1>
+      <p class="auth-copy">개인 취향은 로그인한 계정에만 저장됩니다.</p>
+      <form id="auth-form" novalidate>
+        <label class="field-label" for="email">이메일</label>
+        <input id="email" name="email" type="email" autocomplete="email" maxlength="254" required />
+        <label class="field-label" for="password">비밀번호</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" minlength="12" maxlength="128" required />
+        <p class="field-help">비밀번호는 12자 이상 입력해 주세요.</p>
+        <div id="auth-status" class="form-status" role="status" aria-live="polite"></div>
+        <button id="login-button" class="primary-button" type="submit">로그인</button>
+        <button id="signup-button" class="secondary-button" type="button" hidden>개인 계정 만들기</button>
       </form>
-      <div class="taste-summary"><span>취향 기준</span><p>${DEFAULT_TASTE}</p></div>
-    </section>
+    </div>
+  </section>
 
-    <section id="results" class="results" aria-labelledby="results-title" aria-live="polite">
-      <div class="section-heading">
-        <div><p class="eyebrow">PERSONAL PICKS</p><h2 id="results-title">오늘의 추천</h2></div>
-        <p id="result-meta">검색 전이에요</p>
+  <div id="service-view" hidden>
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="Date Mate 홈"><span class="brand-mark" aria-hidden="true">D</span><span>Date Mate</span></a>
+      <div class="account-actions">
+        <span id="account-email" class="account-email"></span>
+        <button class="profile-button" type="button" aria-label="취향 설정 열기" aria-expanded="false"><span class="profile-dot" aria-hidden="true"></span>나의 취향</button>
+        <button id="logout-button" class="text-button" type="button">로그아웃</button>
       </div>
-      <div id="status" class="status-card">검색하면 취향에 맞는 세 곳을 먼저 골라드려요.</div>
-      <div id="recommendations" class="recommendation-grid"></div>
-    </section>
+    </header>
 
-    <section class="map-section" aria-labelledby="map-title">
-      <div class="section-heading"><div><p class="eyebrow">NEIGHBORHOOD</p><h2 id="map-title">한눈에 비교하기</h2></div></div>
-      <div class="map-shell">
-        <div id="map-canvas" class="map-canvas" aria-hidden="true"></div>
-        <div id="map-fallback" class="map-fallback" role="status">
-          <p><strong>검색 결과를 기다리고 있어요</strong><br />검색하면 장소 위치를 지도에 함께 표시해 드려요.</p>
-        </div>
-      </div>
-      <div id="place-list" class="place-list"></div>
-    </section>
-  </main>
+    <main id="top" class="page-shell">
+      <section class="intro" aria-labelledby="intro-title">
+        <p class="eyebrow">AI DATE CURATION</p>
+        <h1 id="intro-title">검색은 짧게,<br /><em>데이트는 오래.</em></h1>
+        <p class="intro-copy">내 취향과 오늘의 이동 방식을 반영해 실패 확률을 줄인 장소 세 곳을 먼저 보여드려요.</p>
+      </section>
+
+      <section class="search-panel" aria-label="데이트 장소 검색">
+        <form id="search-form">
+          <label class="field-label" for="query">어디에서 무엇을 찾나요?</label>
+          <div class="search-row"><input id="query" name="query" type="search" value="성수동 마제소바" minlength="2" maxlength="80" required /><button class="primary-button" type="submit">찾아보기</button></div>
+          <fieldset class="transport-fieldset"><legend>오늘의 이동 방식</legend><label><input type="radio" name="transport" value="car" checked /><span>자가용 · 주차 중요</span></label><label><input type="radio" name="transport" value="transit" /><span>대중교통 · 도보 중요</span></label></fieldset>
+        </form>
+        <div class="taste-summary"><span>저장된 취향 기준</span><p></p></div>
+      </section>
+
+      <section id="results" class="results" aria-labelledby="results-title" aria-live="polite">
+        <div class="section-heading"><div><p class="eyebrow">PERSONAL PICKS</p><h2 id="results-title">오늘의 추천</h2></div><p id="result-meta">검색 전이에요</p></div>
+        <div id="status" class="status-card">검색하면 취향에 맞는 세 곳을 먼저 골라드려요.</div>
+        <div id="recommendations" class="recommendation-grid"></div>
+      </section>
+
+      <section class="map-section" aria-labelledby="map-title">
+        <div class="section-heading"><div><p class="eyebrow">NEIGHBORHOOD</p><h2 id="map-title">한눈에 비교하기</h2></div></div>
+        <div class="map-shell"><div id="map-canvas" class="map-canvas" aria-hidden="true"></div><div id="map-fallback" class="map-fallback" role="status"><p><strong>검색 결과를 기다리고 있어요</strong><br />검색하면 장소 위치를 지도에 함께 표시해 드려요.</p></div></div>
+        <div id="place-list" class="place-list"></div>
+      </section>
+    </main>
+  </div>
 
   <dialog id="taste-dialog" class="taste-dialog">
-    <form method="dialog">
-      <div class="dialog-heading"><div><p class="eyebrow">MY TASTE</p><h2>나의 취향</h2></div><button value="cancel" aria-label="닫기">×</button></div>
+    <form id="taste-form">
+      <div class="dialog-heading"><div><p class="eyebrow">MY TASTE</p><h2>나의 취향</h2></div><button id="close-taste" type="button" aria-label="닫기">×</button></div>
       <label class="field-label" for="taste">데이트 장소를 고를 때 중요한 점</label>
-      <textarea id="taste" maxlength="500" rows="6">${DEFAULT_TASTE}</textarea>
-      <p class="field-help">취향은 현재 브라우저에서만 사용하며 아직 서버에 저장하지 않아요.</p>
-      <button id="save-taste" class="primary-button dialog-save" value="save">취향 적용하기</button>
+      <textarea id="taste" maxlength="500" minlength="2" rows="6" required></textarea>
+      <p class="field-help">취향은 계정에 안전하게 저장되고 추천 순위에 사용됩니다.</p>
+      <div id="taste-status" class="form-status" role="status" aria-live="polite"></div>
+      <button id="save-taste" class="primary-button dialog-save" type="submit">취향 저장하기</button>
     </form>
   </dialog>
 
-  <footer>Made for unhurried dates · Seoul</footer>
+  <footer id="footer" hidden>Made for unhurried dates · Seoul</footer>
 `;
 
+const authView = getElement<HTMLElement>("auth-view");
+const skipLink = getElement<HTMLAnchorElement>("skip-link");
+const serviceView = getElement<HTMLDivElement>("service-view");
+const authForm = getElement<HTMLFormElement>("auth-form");
+const authStatus = getElement<HTMLDivElement>("auth-status");
+const signupButton = getElement<HTMLButtonElement>("signup-button");
+const loginButton = getElement<HTMLButtonElement>("login-button");
+const logoutButton = getElement<HTMLButtonElement>("logout-button");
+const accountEmail = getElement<HTMLSpanElement>("account-email");
+const footer = getElement<HTMLElement>("footer");
 const form = getElement<HTMLFormElement>("search-form");
 const recommendations = getElement<HTMLDivElement>("recommendations");
 const placeList = getElement<HTMLDivElement>("place-list");
@@ -83,54 +97,174 @@ const status = getElement<HTMLDivElement>("status");
 const resultMeta = getElement<HTMLParagraphElement>("result-meta");
 const dialog = getElement<HTMLDialogElement>("taste-dialog");
 const profileButton = document.querySelector<HTMLButtonElement>(".profile-button");
+const tasteForm = getElement<HTMLFormElement>("taste-form");
 const tasteInput = getElement<HTMLTextAreaElement>("taste");
+const tasteStatus = getElement<HTMLDivElement>("taste-status");
+const closeTasteButton = getElement<HTMLButtonElement>("close-taste");
 const tasteSummary = document.querySelector<HTMLElement>(".taste-summary p");
 const submitButton = form.querySelector<HTMLButtonElement>("button[type='submit']");
 const mapCanvas = getElement<HTMLDivElement>("map-canvas");
 const mapFallback = getElement<HTMLDivElement>("map-fallback");
-const mapPresenter = createMapPresenter(
-  () => loadKakaoMapsSdk(import.meta.env.VITE_KAKAO_MAP_JAVASCRIPT_KEY ?? ""),
-  (sdk) => createKakaoMapController(mapCanvas, sdk),
-  renderMapState,
-);
+const mapPresenter = createMapPresenter(() => loadKakaoMapsSdk(import.meta.env.VITE_KAKAO_MAP_JAVASCRIPT_KEY ?? ""), (sdk) => createKakaoMapController(mapCanvas, sdk), renderMapState);
+
+let currentTaste = "";
+
+authForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await authenticate("login");
+});
+
+signupButton.addEventListener("click", async () => authenticate("signup"));
+logoutButton.addEventListener("click", async () => {
+  logoutButton.disabled = true;
+  try {
+    await apiRequest<{ ok: boolean }>("/api/auth/logout", { method: "POST" });
+    showAuth(false);
+  } catch (error) {
+    status.hidden = false;
+    status.className = "status-card error";
+    status.textContent = messageFrom(error, "로그아웃하지 못했습니다.");
+  } finally {
+    logoutButton.disabled = false;
+  }
+});
 
 profileButton?.addEventListener("click", () => {
   profileButton.setAttribute("aria-expanded", "true");
+  tasteInput.value = currentTaste;
+  tasteStatus.textContent = "";
   dialog.showModal();
 });
+closeTasteButton.addEventListener("click", () => dialog.close());
+dialog.addEventListener("close", () => profileButton?.setAttribute("aria-expanded", "false"));
 
-dialog.addEventListener("close", () => {
-  profileButton?.setAttribute("aria-expanded", "false");
-  if (dialog.returnValue === "save" && tasteSummary) tasteSummary.textContent = tasteInput.value.trim() || "분위기 좋은 곳";
+tasteForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const saveButton = getElement<HTMLButtonElement>("save-taste");
+  saveButton.disabled = true;
+  tasteStatus.textContent = "저장 중…";
+  try {
+    const preference = await apiRequest<Preference>("/api/preferences", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ taste: tasteInput.value }),
+    });
+    setPreference(preference);
+    dialog.close();
+  } catch (error) {
+    tasteStatus.textContent = messageFrom(error, "취향을 저장하지 못했습니다.");
+  } finally {
+    saveButton.disabled = false;
+  }
 });
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!currentTaste) {
+    status.hidden = false;
+    status.className = "status-card error";
+    status.textContent = "먼저 나의 취향을 저장해 주세요.";
+    profileButton?.focus();
+    return;
+  }
   const formData = new FormData(form);
   const request: SearchRequest = {
     query: String(formData.get("query") ?? ""),
     transport: String(formData.get("transport") ?? "car") as Transport,
-    taste: tasteInput.value,
+    taste: currentTaste,
   };
-
   setLoading(true);
   try {
-    const response = await fetch("/api/search", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(request),
-    });
-    const data = (await response.json()) as SearchResponse | ApiError;
-    if (!response.ok || "error" in data) throw new Error("error" in data ? data.error.message : "검색에 실패했습니다.");
-    renderResults(data);
+    renderResults(await apiRequest<SearchResponse>("/api/search", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(request) }));
   } catch (error) {
     status.hidden = false;
     status.className = "status-card error";
-    status.textContent = error instanceof Error ? error.message : "잠시 후 다시 검색해 주세요.";
+    status.textContent = messageFrom(error, "잠시 후 다시 검색해 주세요.");
   } finally {
     setLoading(false);
   }
 });
+
+void initialize();
+
+async function initialize(): Promise<void> {
+  authStatus.textContent = "로그인 상태를 확인하고 있어요…";
+  try {
+    const session = await apiRequest<SessionResponse>("/api/auth/session");
+    signupButton.hidden = !session.signupEnabled;
+    if (session.user) showService(session.user.email, session.preference ?? { taste: "", updatedAt: null });
+    else showAuth(session.signupEnabled);
+  } catch (error) {
+    showAuth(false);
+    authStatus.textContent = messageFrom(error, "로그인 상태를 확인하지 못했습니다.");
+  }
+}
+
+async function authenticate(mode: "login" | "signup"): Promise<void> {
+  if (!authForm.reportValidity()) return;
+  const data = new FormData(authForm);
+  const button = mode === "login" ? loginButton : signupButton;
+  button.disabled = true;
+  authStatus.textContent = mode === "login" ? "로그인 중…" : "계정을 만드는 중…";
+  try {
+    const result = await apiRequest<AuthResponse>(`/api/auth/${mode}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: data.get("email"), password: data.get("password") }),
+    });
+    authForm.reset();
+    showService(result.user.email, result.preference);
+  } catch (error) {
+    authStatus.textContent = messageFrom(error, mode === "login" ? "로그인하지 못했습니다." : "계정을 만들지 못했습니다.");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function showAuth(signupEnabled: boolean): void {
+  skipLink.hidden = true;
+  authView.hidden = false;
+  serviceView.hidden = true;
+  footer.hidden = true;
+  signupButton.hidden = !signupEnabled;
+  authStatus.textContent = signupEnabled ? "로그인하거나 개인 계정을 만들 수 있습니다." : "개인 계정으로 로그인해 주세요.";
+  getElement<HTMLInputElement>("email").focus();
+}
+
+function showService(email: string, preference: Preference): void {
+  skipLink.hidden = false;
+  authView.hidden = true;
+  serviceView.hidden = false;
+  footer.hidden = false;
+  accountEmail.textContent = email;
+  setPreference(preference);
+  if (!preference.taste) {
+    tasteInput.value = DEFAULT_TASTE;
+    dialog.showModal();
+    profileButton?.setAttribute("aria-expanded", "true");
+  }
+}
+
+function setPreference(preference: Preference): void {
+  currentTaste = preference.taste;
+  tasteInput.value = currentTaste || DEFAULT_TASTE;
+  if (tasteSummary) tasteSummary.textContent = currentTaste || "아직 저장된 취향이 없어요.";
+}
+
+async function apiRequest<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, { credentials: "same-origin", ...init });
+  const data = (await response.json()) as T | ApiError;
+  if (!response.ok || isApiError(data)) throw new Error(isApiError(data) ? data.error.message : "요청에 실패했습니다.");
+  return data as T;
+}
+
+function isApiError(value: unknown): value is ApiError {
+  return typeof value === "object" && value !== null && "error" in value;
+}
+
+function messageFrom(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
 
 function setLoading(loading: boolean): void {
   if (submitButton) {
@@ -147,22 +281,8 @@ function setLoading(loading: boolean): void {
 function renderResults(data: SearchResponse): void {
   status.hidden = true;
   resultMeta.textContent = `${data.recommendations.length}곳 · ${data.source === "kakao" ? "카카오 검색 결과" : "데모 데이터"}`;
-  recommendations.innerHTML = data.recommendations.map((place) => `
-    <article class="recommendation-card ${place.rank === 1 ? "featured" : ""}">
-      <div class="rank">0${place.rank}</div>
-      <div class="card-top"><span>${escapeHtml(place.category)}</span><span>${place.tags.map(escapeHtml).join(" · ")}</span></div>
-      <h3>${escapeHtml(place.name)}</h3>
-      <p class="reason">${escapeHtml(place.reason)}</p>
-      <p class="transit-tip"><span aria-hidden="true">↗</span>${escapeHtml(place.transitTip ?? "이동 정보가 아직 없어요.")}</p>
-    </article>
-  `).join("");
-  placeList.innerHTML = data.places.map((place) => `
-    <article class="place-row">
-      <span class="list-rank">${place.rank}</span>
-      <div><h3>${escapeHtml(place.name)}</h3><p>${escapeHtml(place.address)}</p></div>
-      <span class="category">${escapeHtml(place.category)}</span>
-    </article>
-  `).join("");
+  recommendations.innerHTML = data.recommendations.map((place) => `<article class="recommendation-card ${place.rank === 1 ? "featured" : ""}"><div class="rank">0${place.rank}</div><div class="card-top"><span>${escapeHtml(place.category)}</span><span>${place.tags.map(escapeHtml).join(" · ")}</span></div><h3>${escapeHtml(place.name)}</h3><p class="reason">${escapeHtml(place.reason)}</p><p class="transit-tip"><span aria-hidden="true">↗</span>${escapeHtml(place.transitTip ?? "이동 정보가 아직 없어요.")}</p></article>`).join("");
+  placeList.innerHTML = data.places.map((place) => `<article class="place-row"><span class="list-rank">${place.rank}</span><div><h3>${escapeHtml(place.name)}</h3><p>${escapeHtml(place.address)}</p></div><span class="category">${escapeHtml(place.category)}</span></article>`).join("");
   mapPresenter.update(data.places);
 }
 

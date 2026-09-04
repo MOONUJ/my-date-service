@@ -1,3 +1,4 @@
 # 실제 키는 이 파일이 아니라 gitignore된 .dev.vars에만 저장합니다.
+ENABLE_SIGNUP=true
 PLACE_PROVIDER=kakao
 KAKAO_REST_API_KEY=replace-with-your-kakao-rest-api-key

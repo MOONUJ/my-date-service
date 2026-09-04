@@ -2,11 +2,21 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "my-date-service",
   "main": "src/worker.ts",
-  "compatibility_date": "2026-08-28",
+  "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
-    "PLACE_PROVIDER": "mock"
+    "PLACE_PROVIDER": "mock",
+    "ENABLE_SIGNUP": "false"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-date-service-local",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "preview_database_id": "my-date-service-local",
+      "migrations_dir": "migrations"
+    }
+  ],
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application",

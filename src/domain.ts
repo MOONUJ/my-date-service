@@ -29,3 +29,24 @@ export interface SearchResponse {
 export interface ApiError {
   error: { code: string; message: string };
 }
+
+export interface AuthUser {
+  id: string;
+  email: string;
+}
+
+export interface Preference {
+  taste: string;
+  updatedAt: string | null;
+}
+
+export interface SessionResponse {
+  user: AuthUser | null;
+  preference?: Preference;
+  signupEnabled: boolean;
+}
+
+export interface AuthResponse {
+  user: AuthUser;
+  preference: Preference;
+}

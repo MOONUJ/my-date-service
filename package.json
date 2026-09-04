@@ -7,11 +7,12 @@
     "dev": "pnpm build && wrangler dev",
     "dev:ui": "vite",
     "build": "vite build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "wrangler types && tsc --noEmit && tsc --noEmit -p tsconfig.worker.json",
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm test && pnpm build",
     "worker:types": "wrangler types",
-    "worker:check": "wrangler deploy --dry-run"
+    "worker:check": "wrangler deploy --dry-run",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local"
   },
   "devDependencies": {
     "@types/node": "latest",
