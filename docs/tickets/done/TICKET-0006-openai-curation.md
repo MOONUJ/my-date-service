@@ -1,11 +1,11 @@
 ---
 id: TICKET-0006
 title: OpenAI 개인화 큐레이션과 비용 차단선
-status: in-progress
+status: done
 created_at: 2026-09-04
 approved_at: "2026-09-04T10:33:23+09:00"
 started_at: "2026-09-04T10:33:23+09:00"
-completed_at: null
+completed_at: "2026-09-04T10:45:56+09:00"
 ---
 
 ## 목적과 사용자 가치
@@ -67,15 +67,15 @@ completed_at: null
 
 ## 완료 조건
 
-- [ ] 최대 6개 후보만 포함한 Responses API 요청이 지정된 model snapshot, timeout, 출력 상한과 strict JSON Schema를 사용한다.
-- [ ] 유효한 모델 응답은 장소 ID allowlist와 런타임 스키마 검증 후 TOP 3 순위와 짧은 이유에 반영된다.
-- [ ] 존재하지 않는 ID, 중복 장소, 과도한 문자열, 누락 필드와 잘못된 JSON은 채택되지 않는다.
-- [ ] 모델이 장소 원본에 없는 주차·영업시간·거리·교통 사실을 추천 이유에 추가하지 못한다.
-- [ ] 같은 검색은 24시간 cache hit에서 OpenAI를 다시 호출하지 않고 취향·후보·모델·프롬프트 변경 시 cache miss가 된다.
-- [ ] 사용자 일 30회 또는 전체 월 1,000회 차단선에 도달하면 외부 호출 없이 결정론적 추천을 반환한다.
-- [ ] 키 누락, timeout, rate limit, 서버 오류, 거부와 invalid output에서 검색 전체가 실패하지 않고 fallback 출처가 표시된다.
-- [ ] API 키, 이메일, 세션, 취향·검색 원문과 전체 OpenAI 응답이 클라이언트 번들이나 로그에 포함되지 않는다.
-- [ ] fixture·fake 기반 테스트, 자동 검사, 로컬 Worker·D1·브라우저 검증, diff 자체 리뷰, push와 GitHub Actions CI가 성공한다.
+- [x] 최대 6개 후보만 포함한 Responses API 요청이 지정된 model snapshot, timeout, 출력 상한과 strict JSON Schema를 사용한다.
+- [x] 유효한 모델 응답은 장소 ID allowlist와 런타임 스키마 검증 후 TOP 3 순위와 짧은 이유에 반영된다.
+- [x] 존재하지 않는 ID, 중복 장소, 과도한 문자열, 누락 필드와 잘못된 JSON은 채택되지 않는다.
+- [x] 모델이 장소 원본에 없는 주차·영업시간·거리·교통 사실을 추천 이유에 추가하지 못한다.
+- [x] 같은 검색은 24시간 cache hit에서 OpenAI를 다시 호출하지 않고 취향·후보·모델·프롬프트 변경 시 cache miss가 된다.
+- [x] 사용자 일 30회 또는 전체 월 1,000회 차단선에 도달하면 외부 호출 없이 결정론적 추천을 반환한다.
+- [x] 키 누락, timeout, rate limit, 서버 오류, 거부와 invalid output에서 검색 전체가 실패하지 않고 fallback 출처가 표시된다.
+- [x] API 키, 이메일, 세션, 취향·검색 원문과 전체 OpenAI 응답이 클라이언트 번들이나 로그에 포함되지 않는다.
+- [x] fixture·fake 기반 테스트, 자동 검사, 로컬 Worker·D1·브라우저 검증, diff 자체 리뷰, push와 GitHub Actions CI가 성공한다.
 
 ## 검증 계획
 
@@ -117,13 +117,14 @@ completed_at: null
 
 ## 완료 증거
 
-- 구현 커밋: 미완료
-- 브랜치: 미완료
-- CI: 미완료
-- 검증 결과: 미완료
-- 잔여 위험: 미완료
+- 구현 커밋: `9804cef524b0ec6c102355033deab73e3f453cc1`
+- 브랜치: `main`
+- CI: 성공 — https://github.com/MOONUJ/my-date-service/actions/runs/33826952116
+- 검증 결과: `pnpm check` 성공(8 files, 49 tests, 브라우저·Worker typecheck, production build), `pnpm worker:check` 성공, 로컬 D1 migration 최초 적용 및 재실행(no migrations to apply) 성공과 AI cache/usage 테이블·인덱스 확인, Worker fake OpenAI 응답의 `ai`→`cached` 통합 흐름과 키 누락 fallback 확인, timeout·429·5xx·거부·invalid/oversized output·ID/근거 검증·일/월 차단선 단위 테스트 성공, 320px·1280px에서 출처·fallback 표시와 가로 넘침 없음 및 브라우저 콘솔 오류 없음 확인, 클라이언트 번들 secret/fixture 문자열 검사와 `git diff --check` 성공
+- 잔여 위험: 실제 OpenAI API 키 등록·유료 호출·원격 D1 migration·프로덕션 배포는 수행하지 않음. 앱 차단선은 OpenAI 계정 전체 청구 한도를 대신하지 않으므로 실제 활성화 전 OpenAI project budget과 알림 설정 및 당시 모델 가용성·가격 재확인이 필요함.
 
 ## 이력
 
 - 2026-09-04: proposed — 티켓 생성
 - 2026-09-04: in-progress — 사용자 승인 후 구현 시작
+- 2026-09-04: done — OpenAI 큐레이션·검증·D1 캐시·비용 차단선·fallback UI 구현과 로컬/CI 검증 완료
