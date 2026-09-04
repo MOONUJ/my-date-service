@@ -129,6 +129,9 @@ const mapFallback = getElement<HTMLDivElement>("map-fallback");
 const mapPresenter = createMapPresenter(() => loadKakaoMapsSdk(import.meta.env.VITE_KAKAO_MAP_JAVASCRIPT_KEY ?? ""), (sdk) => createKakaoMapController(mapCanvas, sdk), renderMapState);
 
 let currentTaste = "";
+let searchInFlight = false;
+let searchCooldownUntil = 0;
+let searchCooldownTimer: number | undefined;
 
 authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -215,6 +218,7 @@ tasteForm.addEventListener("submit", async (event) => {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (searchInFlight || Date.now() < searchCooldownUntil) return;
   if (!currentTaste) {
     status.hidden = false;
     status.className = "status-card error";
@@ -228,6 +232,7 @@ form.addEventListener("submit", async (event) => {
     transport: String(formData.get("transport") ?? "car") as Transport,
     taste: currentTaste,
   };
+  searchInFlight = true;
   setLoading(true);
   try {
     renderResults(await apiRequest<SearchResponse>("/api/search", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(request) }));
@@ -235,7 +240,11 @@ form.addEventListener("submit", async (event) => {
     status.hidden = false;
     status.className = "status-card error";
     status.textContent = messageFrom(error, "잠시 후 다시 검색해 주세요.");
+    if (error instanceof ApiRequestError && error.code === "REQUEST_RATE_LIMITED" && error.retryAfterSeconds > 0) {
+      startSearchCooldown(error.retryAfterSeconds);
+    }
   } finally {
+    searchInFlight = false;
     setLoading(false);
   }
 });
@@ -307,6 +316,7 @@ function setPreference(preference: Preference): void {
 }
 
 function resetServiceState(): void {
+  clearSearchCooldown();
   currentTaste = "";
   accountEmail.textContent = "";
   tasteInput.value = DEFAULT_TASTE;
@@ -323,8 +333,21 @@ function resetServiceState(): void {
 async function apiRequest<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { credentials: "same-origin", ...init });
   const data = (await response.json()) as T | ApiError;
-  if (!response.ok || isApiError(data)) throw new Error(isApiError(data) ? data.error.message : "요청에 실패했습니다.");
+  if (!response.ok || isApiError(data)) {
+    const retryAfter = Number(response.headers.get("Retry-After") ?? "0");
+    throw new ApiRequestError(
+      isApiError(data) ? data.error.message : "요청에 실패했습니다.",
+      isApiError(data) ? data.error.code : "REQUEST_FAILED",
+      Number.isFinite(retryAfter) ? Math.min(3_600, Math.max(0, Math.ceil(retryAfter))) : 0,
+    );
+  }
   return data as T;
+}
+
+class ApiRequestError extends Error {
+  constructor(message: string, readonly code: string, readonly retryAfterSeconds: number) {
+    super(message);
+  }
 }
 
 function isApiError(value: unknown): value is ApiError {
@@ -337,14 +360,33 @@ function messageFrom(error: unknown, fallback: string): string {
 
 function setLoading(loading: boolean): void {
   if (submitButton) {
-    submitButton.disabled = loading;
-    submitButton.textContent = loading ? "고르는 중…" : "찾아보기";
+    const cooldownSeconds = Math.max(0, Math.ceil((searchCooldownUntil - Date.now()) / 1_000));
+    submitButton.disabled = loading || cooldownSeconds > 0;
+    submitButton.textContent = loading ? "고르는 중…" : cooldownSeconds > 0 ? `${cooldownSeconds}초 후 다시 찾기` : "찾아보기";
   }
   if (loading) {
     status.hidden = false;
     status.className = "status-card loading";
     status.textContent = "취향과 이동 방식을 함께 살펴보고 있어요…";
   }
+}
+
+function startSearchCooldown(retryAfterSeconds: number): void {
+  searchCooldownUntil = Date.now() + retryAfterSeconds * 1_000;
+  if (searchCooldownTimer !== undefined) window.clearTimeout(searchCooldownTimer);
+  searchCooldownTimer = window.setTimeout(() => {
+    searchCooldownUntil = 0;
+    searchCooldownTimer = undefined;
+    setLoading(false);
+  }, retryAfterSeconds * 1_000);
+}
+
+function clearSearchCooldown(): void {
+  if (searchCooldownTimer !== undefined) window.clearTimeout(searchCooldownTimer);
+  searchCooldownTimer = undefined;
+  searchCooldownUntil = 0;
+  searchInFlight = false;
+  setLoading(false);
 }
 
 function renderResults(data: SearchResponse): void {

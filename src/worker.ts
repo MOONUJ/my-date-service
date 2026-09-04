@@ -18,17 +18,23 @@ import { getPreference, savePreference, validateTaste } from "./preferences/pref
 import { createKakaoPlaceProvider } from "./providers/kakao-place-provider";
 import { mockPlaceProvider } from "./providers/mock-place-provider";
 import { type PlaceProvider, PlaceProviderError } from "./providers/place-provider";
+import { consumeRateLimit, networkSubject, RateLimitConfigurationError, type RateLimitPolicy } from "./rate-limit/rate-limit";
 import { searchPlaces, validateSearchRequest } from "./search";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
 const AUTH_BODY_LIMIT = 1_024;
 const SEARCH_BODY_LIMIT = 2_048;
+const AUTH_RATE_LIMIT = { scope: "auth", limit: 5, windowSeconds: 5 * 60 } satisfies RateLimitPolicy;
+const PREFERENCE_RATE_LIMIT = { scope: "preference", limit: 10, windowSeconds: 60 } satisfies RateLimitPolicy;
+const SEARCH_RATE_LIMIT = { scope: "search", limit: 20, windowSeconds: 60 } satisfies RateLimitPolicy;
 
 export type AppEnv = Omit<Env, "ENABLE_SIGNUP" | "PLACE_PROVIDER"> & {
   ENABLE_SIGNUP?: string;
   PLACE_PROVIDER?: string;
   OPENAI_API_KEY?: string;
   OPENAI_FETCH?: typeof fetch;
+  RATE_LIMIT_SECRET?: string;
+  RATE_LIMIT_NETWORK_FALLBACK?: string;
 } & Record<string, unknown>;
 
 export default {
@@ -39,15 +45,18 @@ export default {
     }
 
     try {
-      if (url.pathname === "/api/auth/session" && request.method === "GET") return handleSession(request, env);
-      if (url.pathname === "/api/auth/signup" && request.method === "POST") return handleSignup(request, env);
-      if (url.pathname === "/api/auth/login" && request.method === "POST") return handleLogin(request, env);
-      if (url.pathname === "/api/auth/logout" && request.method === "POST") return handleLogout(request, env);
-      if (url.pathname === "/api/account" && request.method === "DELETE") return handleDeleteAccount(request, env);
-      if (url.pathname === "/api/preferences" && request.method === "GET") return handleGetPreference(request, env);
-      if (url.pathname === "/api/preferences" && request.method === "PUT") return handleSavePreference(request, env);
-      if (url.pathname === "/api/search" && request.method === "POST") return handleSearch(request, env);
-    } catch {
+      if (url.pathname === "/api/auth/session" && request.method === "GET") return await handleSession(request, env);
+      if (url.pathname === "/api/auth/signup" && request.method === "POST") return await handleSignup(request, env);
+      if (url.pathname === "/api/auth/login" && request.method === "POST") return await handleLogin(request, env);
+      if (url.pathname === "/api/auth/logout" && request.method === "POST") return await handleLogout(request, env);
+      if (url.pathname === "/api/account" && request.method === "DELETE") return await handleDeleteAccount(request, env);
+      if (url.pathname === "/api/preferences" && request.method === "GET") return await handleGetPreference(request, env);
+      if (url.pathname === "/api/preferences" && request.method === "PUT") return await handleSavePreference(request, env);
+      if (url.pathname === "/api/search" && request.method === "POST") return await handleSearch(request, env);
+    } catch (error) {
+      if (error instanceof RateLimitConfigurationError) {
+        return jsonError("SERVICE_MISCONFIGURED", "요청 보호 설정을 확인해 주세요.", 503);
+      }
       return jsonError("DATABASE_UNAVAILABLE", "사용자 정보를 일시적으로 불러올 수 없습니다.", 503);
     }
 
@@ -70,6 +79,8 @@ async function handleSignup(request: Request, env: AppEnv): Promise<Response> {
   if (!parsed.ok) return parsed.response;
   const credentials = validateCredentials(parsed.value);
   if (!credentials.ok) return credentialValidationError(credentials.code);
+  const limited = await applyNetworkRateLimit(request, env, { ...AUTH_RATE_LIMIT, scope: "auth:signup" });
+  if (limited) return limited;
   try {
     const user = await createUser(env.DB, credentials.email, credentials.password);
     const cookie = await createSession(env.DB, user.id);
@@ -90,6 +101,8 @@ async function handleLogin(request: Request, env: AppEnv): Promise<Response> {
   if (!parsed.ok) return parsed.response;
   const credentials = validateCredentials(parsed.value);
   if (!credentials.ok) return credentialValidationError(credentials.code);
+  const limited = await applyNetworkRateLimit(request, env, { ...AUTH_RATE_LIMIT, scope: "auth:login" });
+  if (limited) return limited;
   const user = await verifyCredentials(env.DB, credentials.email, credentials.password);
   if (!user) return jsonError("INVALID_CREDENTIALS", "이메일 또는 비밀번호를 확인해 주세요.", 401);
   const [cookie, preference] = await Promise.all([createSession(env.DB, user.id), getPreference(env.DB, user.id)]);
@@ -116,6 +129,8 @@ async function handleDeleteAccount(request: Request, env: AppEnv): Promise<Respo
       ? jsonError(deletion.code, "확인란에 ‘계정 삭제’를 정확히 입력해 주세요.", 400)
       : jsonError(deletion.code, "현재 비밀번호를 확인해 주세요.", 400);
   }
+  const limited = await applyNetworkRateLimit(request, env, { ...AUTH_RATE_LIMIT, scope: "auth:account-delete" }, user.id);
+  if (limited) return limited;
   if (!(await verifyUserPassword(env.DB, user.id, deletion.password))) {
     return jsonError("INVALID_ACCOUNT_CREDENTIALS", "현재 비밀번호를 확인해 주세요.", 401);
   }
@@ -141,6 +156,8 @@ async function handleSavePreference(request: Request, env: AppEnv): Promise<Resp
   if (!parsed.ok) return parsed.response;
   const taste = isRecord(parsed.value) ? validateTaste(parsed.value.taste) : null;
   if (!taste) return jsonError("INVALID_TASTE", "취향은 2자 이상 500자 이하로 입력해 주세요.", 400);
+  const limited = await applyUserRateLimit(env, user.id, PREFERENCE_RATE_LIMIT);
+  if (limited) return limited;
   return Response.json(await savePreference(env.DB, user.id, taste), { headers: JSON_HEADERS });
 }
 
@@ -153,6 +170,8 @@ async function handleSearch(request: Request, env: AppEnv): Promise<Response> {
   if (!preference.taste) return jsonError("TASTE_REQUIRED", "검색 전에 나의 취향을 저장해 주세요.", 409);
   const searchRequest = validateSearchRequest(isRecord(parsed.value) ? { ...parsed.value, taste: preference.taste } : parsed.value);
   if (!searchRequest) return jsonError("INVALID_SEARCH", "검색어와 이동 수단을 확인해 주세요.", 400);
+  const limited = await applyUserRateLimit(env, user.id, SEARCH_RATE_LIMIT);
+  if (limited) return limited;
 
   try {
     const deterministic = await searchPlaces({ ...searchRequest, taste: preference.taste }, selectPlaceProvider(env));
@@ -257,6 +276,38 @@ function providerError(error: PlaceProviderError): Response {
     case "INVALID_LIMIT":
       return jsonError("INVALID_SEARCH", "검색 조건을 확인해 주세요.", 400);
   }
+}
+
+async function applyNetworkRateLimit(
+  request: Request,
+  env: AppEnv,
+  policy: RateLimitPolicy,
+  userId?: string,
+): Promise<Response | null> {
+  return rateLimitResponse(await consumeRateLimit({
+    db: env.DB,
+    secret: env.RATE_LIMIT_SECRET?.trim() ?? "",
+    subject: networkSubject(request, env.RATE_LIMIT_NETWORK_FALLBACK?.trim() || "local-development"),
+    policy,
+    userId,
+  }));
+}
+
+async function applyUserRateLimit(env: AppEnv, userId: string, policy: RateLimitPolicy): Promise<Response | null> {
+  return rateLimitResponse(await consumeRateLimit({
+    db: env.DB,
+    secret: env.RATE_LIMIT_SECRET?.trim() ?? "",
+    subject: userId,
+    policy,
+    userId,
+  }));
+}
+
+function rateLimitResponse(result: { allowed: boolean; retryAfterSeconds: number }): Response | null {
+  if (result.allowed) return null;
+  const response = jsonError("REQUEST_RATE_LIMITED", "요청이 많습니다. 잠시 후 다시 시도해 주세요.", 429);
+  response.headers.set("Retry-After", String(result.retryAfterSeconds));
+  return response;
 }
 
 function jsonError(code: string, message: string, status: number): Response {

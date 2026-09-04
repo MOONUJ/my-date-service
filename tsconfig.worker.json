@@ -19,6 +19,7 @@
     "src/auth",
     "src/preferences",
     "src/ai",
+    "src/rate-limit",
     "src/domain.ts",
     "src/search.ts",
     "src/search.test.ts",

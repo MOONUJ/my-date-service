@@ -13,5 +13,5 @@
     "types": ["vite/client", "node"]
   },
   "include": ["src", "vite.config.ts"],
-  "exclude": ["src/worker.ts", "src/worker.test.ts", "src/auth", "src/preferences", "src/ai"]
+  "exclude": ["src/worker.ts", "src/worker.test.ts", "src/auth", "src/preferences", "src/ai", "src/rate-limit"]
 }
