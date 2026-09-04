@@ -1,10 +1,10 @@
 ---
 id: TICKET-0005
 title: 비공개 계정 인증과 취향 저장
-status: proposed
+status: in-progress
 created_at: 2026-09-04
-approved_at: null
-started_at: null
+approved_at: "2026-09-04T09:59:17+09:00"
+started_at: "2026-09-04T09:59:17+09:00"
 completed_at: null
 ---
 
@@ -113,3 +113,4 @@ completed_at: null
 ## 이력
 
 - 2026-09-04: proposed — 티켓 생성
+- 2026-09-04: in-progress — 사용자 승인 후 구현 시작
