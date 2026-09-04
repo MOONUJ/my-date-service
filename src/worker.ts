@@ -1,4 +1,6 @@
 import type { ApiError } from "./domain";
+import { applyAiCuration } from "./ai/curation";
+import { createOpenAiCurator } from "./ai/openai-curator";
 import {
   clearSessionCookie,
   createSession,
@@ -22,6 +24,8 @@ const SEARCH_BODY_LIMIT = 2_048;
 export type AppEnv = Omit<Env, "ENABLE_SIGNUP" | "PLACE_PROVIDER"> & {
   ENABLE_SIGNUP?: string;
   PLACE_PROVIDER?: string;
+  OPENAI_API_KEY?: string;
+  OPENAI_FETCH?: typeof fetch;
 } & Record<string, unknown>;
 
 export default {
@@ -124,10 +128,17 @@ async function handleSearch(request: Request, env: AppEnv): Promise<Response> {
   if (!searchRequest) return jsonError("INVALID_SEARCH", "검색어와 이동 수단을 확인해 주세요.", 400);
 
   try {
-    return Response.json(
-      await searchPlaces({ ...searchRequest, taste: preference.taste }, selectPlaceProvider(env)),
-      { headers: JSON_HEADERS },
-    );
+    const deterministic = await searchPlaces({ ...searchRequest, taste: preference.taste }, selectPlaceProvider(env));
+    const apiKey = typeof env.OPENAI_API_KEY === "string" ? env.OPENAI_API_KEY.trim() : "";
+    const result = await applyAiCuration({
+      db: env.DB,
+      userId: user.id,
+      preferenceUpdatedAt: preference.updatedAt ?? "",
+      request: searchRequest,
+      deterministic,
+      curator: apiKey ? createOpenAiCurator(apiKey, env.OPENAI_FETCH ?? fetch) : null,
+    });
+    return Response.json(result, { headers: JSON_HEADERS });
   } catch (error) {
     if (error instanceof PlaceProviderError) return providerError(error);
     return jsonError("SEARCH_FAILED", "장소 검색 중 오류가 발생했습니다.", 502);

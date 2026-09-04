@@ -24,6 +24,14 @@ PLACE_PROVIDER=kakao
 KAKAO_REST_API_KEY=카카오_디벨로퍼스_REST_API_키
 ```
 
+## OpenAI 추천
+
+OpenAI 연결은 필수가 아닙니다. `OPENAI_API_KEY`가 없거나 API 오류·시간초과·사용량 차단선이 발생하면 기존 결정론적 TOP 3가 그대로 제공됩니다. 로컬에서 연결하려면 `.dev.vars.example`을 복사한 gitignore 대상 `.dev.vars`에 API 키를 넣습니다. 프로덕션에서는 저장소나 일반 환경 변수에 키를 기록하지 않고 `pnpm exec wrangler secret put OPENAI_API_KEY`로 Worker secret을 등록해야 합니다. 이 티켓과 자동 테스트는 실제 API 호출이나 유료 크레딧 구매를 수행하지 않습니다.
+
+Worker는 지도 검색 결과를 먼저 정렬한 뒤 최대 6개 후보의 장소 ID·이름·카테고리·태그·현재 이동 방식에 해당하는 확인된 안내와 저장 취향만 OpenAI Responses API에 전달합니다. 이메일, 사용자 ID, 비밀번호, 세션, 전체 지도 응답은 전달하지 않습니다. 모델이 고른 근거는 기존 장소 필드와 정확히 일치하는지 검증하고, 추천 문구를 서버에서 다시 구성하므로 제공되지 않은 주차·영업시간·거리 정보는 표시하지 않습니다. 요청 본문과 모델 출력은 로그나 사용량 테이블에 저장하지 않습니다.
+
+동일 사용자·취향 버전·검색 조건·이동 수단·후보·모델·프롬프트 결과는 D1에 최대 24시간 캐시합니다. 사용자별 하루 30회, 서비스 전체 월 1,000회에서 앱의 새 OpenAI 호출을 차단합니다. 이 차단선은 동시 요청이나 OpenAI 계정의 다른 프로젝트 비용까지 보장하는 청구 한도가 아니므로, 실제 활성화 전 OpenAI 프로젝트에도 별도의 월 예산과 알림을 설정하세요. 모델과 가격은 바뀔 수 있으므로 배포 직전 [OpenAI 모델 문서](https://developers.openai.com/api/docs/models)와 [가격 문서](https://developers.openai.com/api/docs/pricing)를 다시 확인해야 합니다.
+
 ## 인증과 취향 데이터
 
 회원가입은 비공개 개인용 운영을 위해 기본적으로 닫혀 있습니다. 첫 개인 계정을 만들 때만 gitignore된 `.dev.vars`에서 `ENABLE_SIGNUP=true`로 실행하고, 계정 생성 후에는 값을 제거하거나 `false`로 돌려 다시 시작하세요. 이 설정을 켠 채 공개 배포하지 마세요.
@@ -32,7 +40,7 @@ KAKAO_REST_API_KEY=카카오_디벨로퍼스_REST_API_키
 
 현재 `wrangler.jsonc`의 D1 ID는 로컬 개발용 placeholder입니다. 실제 원격 D1 생성, migration 적용과 binding ID 등록은 별도 승인·배포 작업이며 이 저장소가 자동으로 수행하지 않습니다. Cloudflare D1 무료 플랜의 사용량과 저장 한도는 배포 직전 [공식 가격 문서](https://developers.cloudflare.com/d1/platform/pricing/)에서 다시 확인하세요.
 
-REST API 키는 Worker에서만 읽으며 클라이언트 번들에 포함하지 않습니다. 프로덕션에서는 `PLACE_PROVIDER`를 `kakao`로 설정하고 `pnpm wrangler secret put KAKAO_REST_API_KEY`로 secret을 별도 등록해야 합니다. 이 저장소의 테스트와 CI는 고정 fixture만 사용하므로 카카오 API를 호출하지 않습니다. 카카오 Local API의 쿼터와 이용 조건은 배포 전에 [공식 쿼터 문서](https://developers.kakao.com/docs/latest/ko/getting-started/quota)와 [키워드 장소 검색 문서](https://developers.kakao.com/docs/latest/ko/local/dev-guide#search-by-keyword)에서 다시 확인합니다.
+REST API 키는 Worker에서만 읽으며 클라이언트 번들에 포함하지 않습니다. 프로덕션에서는 `PLACE_PROVIDER`를 `kakao`로 설정하고 `pnpm exec wrangler secret put KAKAO_REST_API_KEY`로 secret을 별도 등록해야 합니다. 이 저장소의 테스트와 CI는 고정 fixture만 사용하므로 카카오 API를 호출하지 않습니다. 카카오 Local API의 쿼터와 이용 조건은 배포 전에 [공식 쿼터 문서](https://developers.kakao.com/docs/latest/ko/getting-started/quota)와 [키워드 장소 검색 문서](https://developers.kakao.com/docs/latest/ko/local/dev-guide#search-by-keyword)에서 다시 확인합니다.
 
 실제 지도를 표시하려면 `.env.example`을 `.env.local`로 복사해 카카오 플랫폼 키 중 **JavaScript 키**를 설정합니다.
 

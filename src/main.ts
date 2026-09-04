@@ -279,8 +279,27 @@ function setLoading(loading: boolean): void {
 }
 
 function renderResults(data: SearchResponse): void {
-  status.hidden = true;
-  resultMeta.textContent = `${data.recommendations.length}곳 · ${data.source === "kakao" ? "카카오 검색 결과" : "데모 데이터"}`;
+  const curationLabels: Record<SearchResponse["curation"]["source"], string> = {
+    ai: "AI 추천",
+    cached: "저장된 AI 추천",
+    deterministic: "기본 추천",
+  };
+  const fallbackLabels: Partial<Record<NonNullable<SearchResponse["curation"]["fallbackReason"]>, string>> = {
+    missing_key: "AI 연결 전이라 기본 추천을 보여드려요.",
+    budget_exhausted: "오늘의 AI 사용 한도에 도달해 기본 추천을 보여드려요.",
+    timeout: "AI 응답이 늦어 기본 추천을 보여드려요.",
+    rate_limited: "AI 요청이 많아 기본 추천을 보여드려요.",
+    provider_error: "AI를 일시적으로 사용할 수 없어 기본 추천을 보여드려요.",
+    refused: "AI가 결과를 만들지 않아 기본 추천을 보여드려요.",
+    invalid_output: "AI 결과를 안전하게 확인할 수 없어 기본 추천을 보여드려요.",
+  };
+  const fallbackMessage = data.curation.fallbackReason ? fallbackLabels[data.curation.fallbackReason] : undefined;
+  status.hidden = !fallbackMessage;
+  if (fallbackMessage) {
+    status.className = "status-card notice";
+    status.textContent = fallbackMessage;
+  }
+  resultMeta.textContent = `${data.recommendations.length}곳 · ${curationLabels[data.curation.source]} · ${data.source === "kakao" ? "카카오 검색" : "데모 데이터"}`;
   recommendations.innerHTML = data.recommendations.map((place) => `<article class="recommendation-card ${place.rank === 1 ? "featured" : ""}"><div class="rank">0${place.rank}</div><div class="card-top"><span>${escapeHtml(place.category)}</span><span>${place.tags.map(escapeHtml).join(" · ")}</span></div><h3>${escapeHtml(place.name)}</h3><p class="reason">${escapeHtml(place.reason)}</p><p class="transit-tip"><span aria-hidden="true">↗</span>${escapeHtml(place.transitTip ?? "이동 정보가 아직 없어요.")}</p></article>`).join("");
   placeList.innerHTML = data.places.map((place) => `<article class="place-row"><span class="list-rank">${place.rank}</span><div><h3>${escapeHtml(place.name)}</h3><p>${escapeHtml(place.address)}</p></div><span class="category">${escapeHtml(place.category)}</span></article>`).join("");
   mapPresenter.update(data.places);

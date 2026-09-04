@@ -44,6 +44,7 @@ input[type="search"], input[type="email"], input[type="password"], textarea { wi
 .status-card { padding: 2rem; border: 1px dashed #aaa195; color: #6e685f; text-align: center; }
 .status-card.loading { border-style: solid; background: #f3eee5; }
 .status-card.error { color: #982f20; border-color: #c76a59; background: #fff3ef; }
+.status-card.notice { padding: 1rem; border-style: solid; background: #f8f3e9; }
 .recommendation-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 .recommendation-card { position: relative; min-height: 330px; display: flex; flex-direction: column; padding: 1.4rem; overflow: hidden; border: 1px solid var(--line); background: rgba(255,255,255,.75); }
 .recommendation-card.featured { color: white; background: var(--ink); border-color: var(--ink); }

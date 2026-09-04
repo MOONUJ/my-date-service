@@ -22,6 +22,10 @@ export interface SearchResponse {
   query: string;
   generatedAt: string;
   source: string;
+  curation: {
+    source: "ai" | "cached" | "deterministic";
+    fallbackReason?: "missing_key" | "budget_exhausted" | "timeout" | "rate_limited" | "provider_error" | "refused" | "invalid_output";
+  };
   recommendations: PlaceRecommendation[];
   places: PlaceRecommendation[];
 }

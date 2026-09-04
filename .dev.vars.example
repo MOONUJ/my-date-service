@@ -2,3 +2,4 @@
 ENABLE_SIGNUP=true
 PLACE_PROVIDER=kakao
 KAKAO_REST_API_KEY=replace-with-your-kakao-rest-api-key
+OPENAI_API_KEY=replace-with-your-openai-api-key

@@ -74,6 +74,7 @@ export function curatePlaces(
     query: request.query,
     generatedAt: now.toISOString(),
     source,
+    curation: { source: "deterministic" },
     recommendations: places.slice(0, 3),
     places,
   };
