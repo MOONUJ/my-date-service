@@ -1,10 +1,10 @@
 ---
 id: TICKET-0008
 title: 인증·검색 요청 남용 방지
-status: proposed
+status: in-progress
 created_at: 2026-09-04
-approved_at: null
-started_at: null
+approved_at: "2026-09-04T22:57:49+09:00"
+started_at: "2026-09-04T22:57:49+09:00"
 completed_at: null
 ---
 
@@ -109,3 +109,4 @@ completed_at: null
 ## 이력
 
 - 2026-09-04: proposed — 현재 MVP의 인증·외부 API 남용 방지 공백을 다음 작업으로 제안
+- 2026-09-04: in-progress — 사용자 승인 후 구현 시작
