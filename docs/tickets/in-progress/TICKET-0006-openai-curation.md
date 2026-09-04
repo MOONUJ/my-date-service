@@ -1,10 +1,10 @@
 ---
 id: TICKET-0006
 title: OpenAI 개인화 큐레이션과 비용 차단선
-status: proposed
+status: in-progress
 created_at: 2026-09-04
-approved_at: null
-started_at: null
+approved_at: "2026-09-04T10:33:23+09:00"
+started_at: "2026-09-04T10:33:23+09:00"
 completed_at: null
 ---
 
@@ -126,3 +126,4 @@ completed_at: null
 ## 이력
 
 - 2026-09-04: proposed — 티켓 생성
+- 2026-09-04: in-progress — 사용자 승인 후 구현 시작
